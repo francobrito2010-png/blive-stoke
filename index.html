@@ -544,17 +544,6 @@
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowAlerts(true)}
-                  className="relative w-9 h-9 rounded-full bg-white/[0.05] border border-white/10 flex items-center justify-center active:bg-white/10"
-                >
-                  <Icon n="bell" size={15} className="text-zinc-300" />
-                  {pendingAlerts.length > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-[10px] font-bold flex items-center justify-center">
-                      {pendingAlerts.length}
-                    </span>
-                  )}
-                </button>
-                <button
                   onClick={() => setLang((l) => (l === 'pt' ? 'es' : 'pt'))}
                   className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide rounded-full px-3 py-1.5 bg-white/[0.05] border border-white/10 active:bg-white/10"
                 >
@@ -600,26 +589,6 @@
               </button>
             </div>
 
-            {/* Notify switch */}
-            <button
-              onClick={toggleNotify}
-              className={`mt-4 w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 border transition-colors ${
-                data.notifyEnabled ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.03] border-white/[0.08]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {data.notifyEnabled ? <Icon n="bell" size={15} className="text-emerald-400" /> : <Icon n="bellOff" size={15} className="text-zinc-500" />}
-                <div className="text-left">
-                  <div className={`text-xs font-bold uppercase ${data.notifyEnabled ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                    {data.notifyEnabled ? t.notifyOn : t.notifyOff}
-                  </div>
-                </div>
-              </div>
-              <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-colors ${data.notifyEnabled ? 'bg-emerald-500/40' : 'bg-white/10'}`}>
-                <div className={`w-5 h-5 rounded-full bg-white transition-transform ${data.notifyEnabled ? 'translate-x-4' : ''}`} />
-              </div>
-            </button>
-            <p className="text-[10px] text-zinc-500 mt-1.5 px-1">{t.notifyToggleHint}</p>
           </div>
 
           {error && (
