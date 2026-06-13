@@ -9,6 +9,8 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <style>
       html, body, #root { margin: 0; padding: 0; background-color: #000; }
       .animate-spin { animation: spin 1s linear infinite; }
@@ -17,6 +19,18 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNipTXXyosjqu17x9jOcGKdK3Q-r1etRE",
+        authDomain: "chicha-stoke.firebaseapp.com",
+        projectId: "chicha-stoke",
+        storageBucket: "chicha-stoke.firebasestorage.app",
+        messagingSenderId: "672701965332",
+        appId: "1:672701965332:web:fec7d0e8f3b4ea6679f301"
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+    </script>
     <script type="text/babel" data-presets="react">
 
     const { useState, useEffect, useCallback } = React;
@@ -203,30 +217,33 @@
       const t = T[lang];
 
       useEffect(() => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
+        const ref = db.collection('blive_stock').doc('main');
+        const unsub = ref.onSnapshot((snap) => {
+          if (snap.exists) {
+            const parsed = snap.data();
             if (!parsed.shopItems) parsed.shopItems = seedData().shopItems;
             if (!parsed.alerts) parsed.alerts = [];
             if (parsed.notifyEnabled === undefined) parsed.notifyEnabled = false;
+            if (!parsed.items) parsed.items = seedData().items;
+            if (!parsed.movements) parsed.movements = [];
             setData(parsed);
           } else {
             const seed = seedData();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+            ref.set(seed);
             setData(seed);
           }
-        } catch (e) {
-          setData(seedData());
-        } finally {
           setLoading(false);
-        }
+        }, (e) => {
+          setError('—');
+          setLoading(false);
+        });
+        return () => unsub();
       }, []);
 
       const persist = useCallback(async (next) => {
         setData(next);
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          await db.collection('blive_stock').doc('main').set(next);
           setError(null);
         } catch (e) {
           setError('—');
