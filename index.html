@@ -62,10 +62,16 @@
     .trash-btn{color:#52525b;font-size:14px;padding:4px;background:none;border:none}
     .trash-btn:active{color:var(--red)}
     .qty-controls{display:flex;align-items:center;gap:10px;flex-shrink:0}
-    .qty-num{font-size:26px;font-weight:900;width:32px;text-align:center;line-height:1}
+    .qty-num{font-size:24px;font-weight:900;width:46px;text-align:center;line-height:1}
     .circle-btn{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;flex-shrink:0}
     .circle-btn.plus{background:var(--red);border-color:var(--red)}
     .circle-btn:disabled{opacity:.3}
+    .qty-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+    .qty-picker{background:#0f0f11;border:1px solid rgba(220,38,38,.3);border-radius:20px 20px 0 0;width:100%;max-width:420px;padding:16px;padding-bottom:28px}
+    .qty-picker-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a1a1aa;text-align:center;margin-bottom:14px}
+    .qty-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .qty-opt{padding:16px 6px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);font-size:20px;font-weight:900;color:#fff;text-align:center}
+    .qty-opt.selected{background:var(--red);border-color:var(--red)}
 
     /* SHOP ROW */
     .shop-row{background:var(--card);border:1px solid rgba(245,158,11,.3);border-radius:16px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
@@ -215,6 +221,13 @@
     <div class="modal-footer">
       <button class="btn-full red" onclick="copyShare()" id="btn-copy">🔗 Copiar texto</button>
     </div>
+  </div>
+</div>
+
+<div class="qty-picker-overlay hidden" id="qty-picker-overlay" onclick="if(event.target===this)closeQtyPicker()">
+  <div class="qty-picker">
+    <div class="qty-picker-title" id="qty-picker-title"></div>
+    <div class="qty-grid" id="qty-grid"></div>
   </div>
 </div>
 
@@ -387,14 +400,21 @@
               </div>
             </div>
             <div class="qty-controls">
-              <button class="circle-btn" onclick="delta('${item.id}',-1)" ${item.qty<=0?'disabled':''}>−</button>
-              <div class="qty-num" style="${qtyColor}">${item.qty}</div>
-              <button class="circle-btn plus" onclick="delta('${item.id}',1)">+</button>
+              <button class="circle-btn" onclick="stepQty('${item.id}',-0.5)" ${item.qty<=0?'disabled':''}>−</button>
+              <div class="qty-num" style="${qtyColor}" onclick="openQtyPicker('${item.id}')">${fmtQty(item.qty)}</div>
+              <button class="circle-btn plus" onclick="stepQty('${item.id}',0.5)">+</button>
             </div>
           </div>
         `;
       }).join('');
     }
+  }
+
+  function fmtQty(q){
+    const whole = Math.floor(q);
+    const half = (q - whole) === 0.5;
+    if(!half) return String(whole);
+    return whole > 0 ? whole + '½' : '½';
   }
 
   // ── Actions ───────────────────────────────────────────
@@ -408,9 +428,40 @@
     render();
   }
 
-  async function delta(id, d){
-    const items = data.items.map(it => it.id===id ? {...it, qty:Math.max(0,it.qty+d)} : it);
-    const item = items.find(it=>it.id===id);
+  async function stepQty(id, d){
+    const item = data.items.find(it=>it.id===id);
+    const newQty = Math.max(0, Math.round((item.qty + d) * 2) / 2);
+    const items = data.items.map(it => it.id===id ? {...it, qty:newQty} : it);
+    const movements = [{
+      id:'mv_'+Date.now(), itemName:item.name, delta:d, ts:new Date().toISOString()
+    }, ...(data.movements||[])].slice(0,100);
+    await persist({...data, items, movements});
+  }
+
+  let qtyPickerItemId = null;
+  function openQtyPicker(id){
+    qtyPickerItemId = id;
+    const item = data.items.find(it=>it.id===id);
+    document.getElementById('qty-picker-title').textContent = item.name;
+    const options = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5];
+    const grid = document.getElementById('qty-grid');
+    grid.innerHTML = options.map(v => `
+      <button class="qty-opt${v===item.qty?' selected':''}" onclick="pickQty(${v})">${fmtQty(v)}</button>
+    `).join('');
+    document.getElementById('qty-picker-overlay').classList.remove('hidden');
+  }
+  function closeQtyPicker(){
+    document.getElementById('qty-picker-overlay').classList.add('hidden');
+    qtyPickerItemId = null;
+  }
+  async function pickQty(v){
+    const id = qtyPickerItemId;
+    closeQtyPicker();
+    if(!id) return;
+    const item = data.items.find(it=>it.id===id);
+    if(item.qty === v) return;
+    const d = v - item.qty;
+    const items = data.items.map(it => it.id===id ? {...it, qty:v} : it);
     const movements = [{
       id:'mv_'+Date.now(), itemName:item.name, delta:d, ts:new Date().toISOString()
     }, ...(data.movements||[])].slice(0,100);
